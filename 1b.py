@@ -5,16 +5,6 @@ import numpy as np
 df = pd.read_csv('./dataset_mood_smartphone.csv')
 
 def remove_outliers(df, variable):
-    """
-    Removes outliers from a DataFrame using the Interquartile Range (IQR) method.
-
-    Parameters:
-        df (DataFrame): The pandas DataFrame containing the data.
-        column (str): The name of the column from which outliers will be removed.
-
-    Returns:
-        DataFrame: A DataFrame with outliers removed based on the specified column.
-    """
     # Calculate the IQR for the specified variable
     Q1 = df[df['variable'] == variable]['value'].quantile(0.25)
     Q3 = df[df['variable'] == variable]['value'].quantile(0.75)
@@ -27,7 +17,44 @@ def remove_outliers(df, variable):
     
     return df
 
-def clean_dataset(df):
+# Function to impute missing values using forward fill imputation for time series
+def impute_missing_values_forward_fill(df, variable):
+    df.loc[df['variable'] == variable, 'value'] = df[df['variable'] == variable]['value'].fillna(method='ffill')
+    return df
+
+# Function to impute missing values using interpolation for time series
+def impute_missing_values_interpolation(df, variable):
+    df.loc[df['variable'] == variable, 'value'] = df[df['variable'] == variable]['value'].interpolate(method='time')
+    return df
+
+# Function to impute missing 'mood' measurements for days with missing data
+def impute_missing_mood(df, timestamp_col):
+    # Ensure the timestamp column is in datetime format
+    df[timestamp_col] = pd.to_datetime(df[timestamp_col])
+    
+    # Set the index to the timestamp column
+    df.set_index(timestamp_col, inplace=True)
+    
+    # Group by id and Date, and check if 'mood' is missing for any day
+    missing_mood_days = df[df['variable'] == 'mood'].groupby('id').resample('D').first().isnull()
+    
+    # For each id, find the days where 'mood' is missing and impute using forward fill
+    for id in missing_mood_days.index.get_level_values(0).unique():
+        missing_days = missing_mood_days.loc[id][missing_mood_days.loc[id]['value']]
+        for day in missing_days.index:
+            # Forward fill the missing 'mood' value for the day
+            day_data = df.loc[(df['id'] == id) & (df.index.date == day.date())]
+            if not day_data['value'].isnull().all():  # Check if all values are not NaN
+                mood_value = day_data['value'].fillna(method='ffill').iloc[-1]
+                df.loc[(df['id'] == id) & (df.index.date == day.date()) & (df['variable'] == 'mood'), 'value'] = mood_value
+    
+    # Reset the index
+    df.reset_index(inplace=True)
+    
+    return df
+
+
+def clean_dataset(df, imputation_method, timestamp_col):
     # List of variables to be cleaned
     variables = ['mood', 'circumplex.arousal', 'circumplex.valence', 'activity', 'screen',
                  'call', 'sms', 'appCat.builtin', 'appCat.communication', 'appCat.entertainment',
@@ -39,13 +66,19 @@ def clean_dataset(df):
         df = remove_outliers(df, variable)
     
     # Impute missing values for each variable
-    # Here we choose forward fill imputation for time series data
-    #for variable in variables:
-        #df = impute_missing_values_forward_fill(df, variable)
+    for variable in variables:
+        if imputation_method == 'forward_fill':
+            df = impute_missing_values_forward_fill(df, variable)
+        elif imputation_method == 'interpolation':
+            df = impute_missing_values_interpolation(df, variable)
+
+    # Impute missing 'mood' measurements for days with missing data
+    df = impute_missing_mood(df, timestamp_col)
+        
     
     return df
 
-df_cleaned = clean_dataset(df)
+df_cleaned = clean_dataset(df, 'forward_fill', 'time')
 
 # Save the cleaned dataset to a new CSV file
 df_cleaned.to_csv('cleaned_dataset.csv', index=False)
