@@ -24,7 +24,14 @@ def impute_missing_values_forward_fill(df, variable):
 
 # Function to impute missing values using interpolation for time series
 def impute_missing_values_interpolation(df, variable):
+    # Convert 'time' column to datetime
+    df['time'] = pd.to_datetime(df['time'])
+    # Set 'time' column as index
+    df.set_index('time', inplace=True)
+    # Interpolate missing values
     df.loc[df['variable'] == variable, 'value'] = df[df['variable'] == variable]['value'].interpolate(method='time')
+    # Reset index
+    df.reset_index(inplace=True)
     return df
 
 # Function to impute missing 'mood' measurements for days with missing data
@@ -78,7 +85,7 @@ def clean_dataset(df, imputation_method, timestamp_col):
     
     return df
 
-df_cleaned = clean_dataset(df, 'forward_fill', 'time')
+df_cleaned = clean_dataset(df, 'interpolation', 'time')
 
 # Save the cleaned dataset to a new CSV file
 df_cleaned.to_csv('cleaned_dataset.csv', index=False)
