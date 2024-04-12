@@ -6,8 +6,8 @@ from sklearn.metrics import accuracy_score
 
 
 pd.set_option('future.no_silent_downcasting', True)
-dataset = pd.read_csv('./dataset_mood_smartphone.csv')
-dataset['time'] = pd.to_datetime(dataset['time'])
+dataset = pd.read_csv('./cleaned_dataset.csv')
+dataset['time'] = pd.to_datetime(dataset['time'], format='mixed')
 
 
 def create_features(df, window_size=10):
@@ -24,15 +24,17 @@ def create_features(df, window_size=10):
     X = []
     Y = []
 
-    for id, data in df.drop(columns=df.columns[0]).sort_values('time').groupby('id'):
+    for id, data in df.sort_values('time').groupby('id'):
         # We can only compare prediction to days where a mood is recorded
         target_dates = list(OrderedDict.fromkeys([x.normalize() for x in data[data['variable'] == 'mood']['time']]))
 
         for date in target_dates:
             features = {}
-            date_window = date - pd.Timedelta(days=window_size)  # window of [target_date - window_size, target_date + 1)
-            data_n_1 = data[(data['time'] >= date_window) & (data['time'] < date)]
-            data_n = data[(data['time'] >= date) & (data['time'] < date + pd.Timedelta(days=1))]
+            date_window = date + pd.Timedelta(days=window_size)  # window of [target_date - window_size, target_date + 1)
+            if date_window > target_dates[-1]:
+                break
+            data_n_1 = data[(data['time'] >= date) & (data['time'] < date_window)]
+            data_n = data[(data['time'] >= date_window) & (data['time'] < date_window + pd.Timedelta(days=1))]
 
             score_vars = ['mood', 'circumplex.arousal', 'circumplex.valence']
             for var in score_vars:
@@ -43,10 +45,10 @@ def create_features(df, window_size=10):
                 features[f"last3_mean_{var}"] = -10 if len(data_n_1.loc[data_n_1['variable'] == var]) < 3 else \
                     data_n_1.loc[data_n_1['variable'] == var]['value'].iloc[:3].fillna(0).mean()
 
-            for var in [x for x in list(df['variable'].drop_duplicates()) if x not in score_vars]:
-                # Aggregating the variables
-                features[f"aggr_{var}"] = 0 if data_n_1.loc[data_n_1['variable'] == var].empty else\
-                    data_n_1.loc[data_n_1['variable'] == var]['value'].sum()
+            # for var in [x for x in list(df['variable'].drop_duplicates()) if x not in score_vars]:
+            #     # Aggregating the variables
+            #     features[f"aggr_{var}"] = 0 if data_n_1.loc[data_n_1['variable'] == var].empty else\
+            #         data_n_1.loc[data_n_1['variable'] == var]['value'].sum()
 
             X.append(features)
             Y.append(data_n[data_n['variable'] == 'mood']['value'].mean())
@@ -54,7 +56,7 @@ def create_features(df, window_size=10):
     return X, Y
 
 
-x, y = create_features(dataset, window_size=10)
+x, y = create_features(dataset, window_size=5)
 
 x_train, x_test = [list(point.values()) for point in x[200:]], [list(point.values()) for point in x[:200]]
 y_train, y_test = [round(point) for point in y[200:]], [round(point) for point in y[:200]]
