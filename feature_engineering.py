@@ -48,15 +48,22 @@ def create_features(df, window_size=3):
                 values = data_n_1.loc[data_n_1['variable'] == var]['value']
                 features[f"slope_{var}"] = -1 if len(values) < 2 else \
                     np.polyfit(range(len(values)), values, 1)[0]
+                features[f"last_{var}"] = 0 if data_n_1.loc[data_n_1['variable'] == var].empty else \
+                    data_n_1.loc[data_n_1['variable'] == var].iloc[-1]['value']
 
             for var in binary_vars:
                 features[f"sum_{var}"] = 0 if data_n_1.loc[data_n_1['variable'] == var].empty else \
                     data_n_1.loc[data_n_1['variable'] == var]['value'].sum()
+                features[f"last_{var}"] = 0 if data_n_1.loc[data_n_1['variable'] == var].empty else \
+                    data_n_1.loc[data_n_1['variable'] == var].iloc[-1]['value']
 
             features[f"mean_apps"] = 0
             for var in apps:
                 features[f"mean_apps"] += 0 if data_n_1.loc[data_n_1['variable'] == var].empty else \
                     data_n_1.loc[data_n_1['variable'] == var]['value'].mean()
+                features[f"last_{var}"] = 0 if data_n_1.loc[data_n_1['variable'] == var].empty else \
+                    data_n_1.loc[data_n_1['variable'] == var].iloc[-1]['value']
+
 
 
 
@@ -113,6 +120,7 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=42)
     # Selecting optimal features
     features = select_features(X_train, y_train)
+    print(features)
     X_train, X_test = X_train[features], X_test[features]
 
     # Training classifier

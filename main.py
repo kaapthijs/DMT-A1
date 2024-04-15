@@ -48,39 +48,39 @@ def visualize_data(data: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
         plt.title(f'variable: {var}')
         plt.show()
 
-    for var in ['mood']:
-        missing_days = patient_properties.loc[f"missing {var} days"]
-        # Plotting
-        missing_days.plot(kind='bar', figsize=(10, 6))
-        plt.title(f'Number of Missing {var} Days for Each Patient')
-        plt.xlabel('Patient ID')
-        plt.ylabel('Number of Missing Days')
-        plt.show()
+    # for var in ['mood']:
+    #     missing_days = patient_properties.loc[f"missing {var} days"]
+    #     # Plotting
+    #     missing_days.plot(kind='bar', figsize=(10, 6))
+    #     plt.title(f'Number of Missing {var} Days for Each Patient')
+    #     plt.xlabel('Patient ID')
+    #     plt.ylabel('Number of Missing Days')
+    #     plt.show()
 
     # Convert 'time' column to datetime and extract date
     data['time'] = pd.to_datetime(dataset['time'])
     data['date'] = dataset['time'].dt.date
+    for var in ['mood', 'circumplex.arousal', 'circumplex.valence', 'activity', 'screen']:
+        # Filter the data for 'mood' variable
+        mood_data = data[data['variable'] == var]
 
-    # Filter the data for 'mood' variable
-    mood_data = data[data['variable'] == 'mood']
+        # Create a pivot table where each row corresponds to a date and each column corresponds to an ID
+        pivot_table = mood_data.pivot_table(index='date', columns='id', values='value', aggfunc='count')
 
-    # Create a pivot table where each row corresponds to a date and each column corresponds to an ID
-    pivot_table = mood_data.pivot_table(index='date', columns='id', values='value', aggfunc='count')
+        # Create a DataFrame where each value is True if the 'mood' value is missing and False otherwise
+        missing_mood = pivot_table.isnull()
 
-    # Create a DataFrame where each value is True if the 'mood' value is missing and False otherwise
-    missing_mood = pivot_table.isnull()
+        # Select some IDs to visualize
+        selected_ids = list(data['id'].unique())  # replace with your selected IDs
+        missing_mood_selected = missing_mood[selected_ids]
 
-    # Select some IDs to visualize
-    selected_ids = list(data['id'].unique())  # replace with your selected IDs
-    missing_mood_selected = missing_mood[selected_ids]
-
-    # Create a heatmap
-    plt.figure(figsize=(10, 6))
-    sns.heatmap(missing_mood_selected, cbar=False, cmap='viridis',mask=missing_mood)
-    plt.title('Missing Mood Values for Selected IDs')
-    plt.xlabel('ID')
-    plt.ylabel('Date')
-    plt.show()
+        # Create a heatmap
+        plt.figure(figsize=(10, 6))
+        sns.heatmap(missing_mood_selected, cbar=False, cmap='viridis',mask=missing_mood)
+        plt.title(f'Missing {var} Values for Selected IDs')
+        plt.xlabel('ID')
+        plt.ylabel('Date')
+        plt.show()
 
     grouped_data = data[data['variable'] == 'mood'].groupby('id')
 
