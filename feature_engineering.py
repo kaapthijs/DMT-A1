@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 SEED = 44
 
 
-def create_features(df, window_size=10):
+def create_features(df, window_size=3):
     """
     Extract and create features using the target_dates (dates where 'mood' was measured)
     as target variables. Window_size amount of days is subtracted from these dates, defining a window
@@ -22,6 +22,9 @@ def create_features(df, window_size=10):
     """
 
     df['time'] = pd.to_datetime(df['time'], format='mixed')
+    score_vars = ['mood', 'circumplex.arousal', 'circumplex.valence', 'activity']
+    binary_vars = ['call', 'screen']
+    apps = [x for x in list(df['variable'].drop_duplicates()) if x not in score_vars and x not in binary_vars]
     X = []
     Y = []
 
@@ -39,18 +42,23 @@ def create_features(df, window_size=10):
             data_n = data[(data['time'] >= date_window) & (data['time'] < date_window + pd.Timedelta(days=1))]
 
             # Features 1: Mean of mood, arousal and valence for last n=window and n=3 days
-            score_vars = ['mood', 'circumplex.arousal', 'circumplex.valence']
             for var in score_vars:
-                features[f"mean_{var}"] = -10 if data_n_1.loc[data_n_1['variable'] == var].empty else \
+                features[f"mean_{var}"] = 0 if data_n_1.loc[data_n_1['variable'] == var].empty else \
                     data_n_1.loc[data_n_1['variable'] == var]['value'].mean()
-                features[f"last3_mean_{var}"] = -10 if len(data_n_1.loc[data_n_1['variable'] == var]) < 3 else \
-                    data_n_1.loc[data_n_1['variable'] == var]['value'].iloc[:3].fillna(0).mean()
+                values = data_n_1.loc[data_n_1['variable'] == var]['value']
+                features[f"slope_{var}"] = -1 if len(values) < 2 else \
+                    np.polyfit(range(len(values)), values, 1)[0]
 
-            # Feature 2: aggregated values
-            for var in [x for x in list(df['variable'].drop_duplicates()) if x not in score_vars]:
-                # Aggregating the variables
-                features[f"aggr_{var}"] = 0 if data_n_1.loc[data_n_1['variable'] == var].empty else\
+            for var in binary_vars:
+                features[f"sum_{var}"] = 0 if data_n_1.loc[data_n_1['variable'] == var].empty else \
                     data_n_1.loc[data_n_1['variable'] == var]['value'].sum()
+
+            features[f"mean_apps"] = 0
+            for var in apps:
+                features[f"mean_apps"] += 0 if data_n_1.loc[data_n_1['variable'] == var].empty else \
+                    data_n_1.loc[data_n_1['variable'] == var]['value'].mean()
+
+
 
             X.append(features)
             Y.append(data_n[data_n['variable'] == 'mood']['value'].mean())
@@ -89,7 +97,7 @@ def select_features(X, y, k=5, cc=0.001):
     plt.title(f"Feature Selection Based on Lasso with alpha = {lasso_cv.best_params_['alpha']}")
     plt.xlabel("Features")
     plt.ylabel("Importance")
-    plt.ylim(0, 0.15)
+    plt.ylim(0, 1)
     plt.tight_layout()
     plt.show()
 
