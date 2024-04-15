@@ -95,7 +95,7 @@ def visualize_data(data: pd.DataFrame) -> (pd.DataFrame, pd.DataFrame):
     # Loop through each group
     for i, (id, group) in enumerate(grouped_data):
         # Convert the 'time' column to datetime
-        group['time'] = pd.to_datetime(group['time'])
+        group['time'] = pd.to_datetime(group['time'], format='mixed')
 
         # Sort the data by 'time'
         group = group.sort_values('time')
