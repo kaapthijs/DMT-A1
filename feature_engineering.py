@@ -21,7 +21,7 @@ def create_features(df, window_size=3):
     :return:
     """
 
-    df['time'] = pd.to_datetime(df['time'], format='mixed')
+    df['time'] = pd.to_datetime(df['time'])
     score_vars = ['mood', 'circumplex.arousal', 'circumplex.valence', 'activity']
     binary_vars = ['call', 'screen']
     apps = [x for x in list(df['variable'].drop_duplicates()) if x not in score_vars and x not in binary_vars]
@@ -112,7 +112,7 @@ def select_features(X, y, k=5, cc=0.001):
 
 
 if __name__ == '__main__':
-    pd.set_option('future.no_silent_downcasting', True)
+    #pd.set_option('future.no_silent_downcasting', True)
     dataset = pd.read_csv('./cleaned_dataset.csv')
     # Creating features
     X, y = create_features(dataset)
