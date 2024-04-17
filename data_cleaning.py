@@ -1,9 +1,6 @@
 import pandas as pd
 import numpy as np
 
-# Load the dataset
-df = pd.read_csv('./dataset_mood_smartphone.csv')
-
 
 def remove_outliers(df, variable):
     # Calculate the IQR for the specified variable
@@ -14,8 +11,11 @@ def remove_outliers(df, variable):
     upper_bound = Q3 + 1.5 * IQR
 
     # Replace outliers with NaN
-    df.loc[(df['variable'] == variable) & ((df['value'] < lower_bound) | (df['value'] > upper_bound)), 'value'] = np.nan
+    # df.loc[(df['variable'] == variable) & ((df['value'] < lower_bound) | (df['value'] > upper_bound)), 'value'] = np.nan
 
+    # Remove outliers
+    i = df.loc[(df['variable'] == variable) & ((df['value'] < lower_bound) | (df['value'] > upper_bound))].index
+    df = df.drop(i)
     return df
 
 
@@ -69,17 +69,18 @@ def impute_missing_mood(df, timestamp_col):
 
 def clean_dataset(df, imputation_method, timestamp_col):
     # List of variables to be cleaned
-    variables = ['mood', 'circumplex.arousal', 'circumplex.valence', 'activity', 'screen',
-                 'call', 'sms', 'appCat.builtin', 'appCat.communication', 'appCat.entertainment',
+    vars_score = ['mood', 'circumplex.arousal', 'circumplex.valence', 'activity']
+    vars_binary = ['call', 'sms'] # We don't use these
+    variables = ['screen', 'appCat.builtin', 'appCat.communication', 'appCat.entertainment',
                  'appCat.finance', 'appCat.game', 'appCat.office', 'appCat.other', 'appCat.social',
                  'appCat.travel', 'appCat.unknown', 'appCat.utilities', 'appCat.weather']
 
-    # Remove outliers for each variable
-    for variable in variables:
+    # Remove outliers for time variables
+    for variable in variables + vars_score:
         df = remove_outliers(df, variable)
 
     # Impute missing values for each variable
-    for variable in variables:
+    for variable in variables + vars_score:
         if imputation_method == 'forward_fill':
             df = impute_missing_values_forward_fill(df, variable)
         elif imputation_method == 'interpolation':
@@ -91,9 +92,10 @@ def clean_dataset(df, imputation_method, timestamp_col):
     return df
 
 
-df_cleaned = clean_dataset(df, 'interpolation', 'time')
-
-# Save the cleaned dataset to a new CSV file
-df_cleaned.to_csv('cleaned_dataset.csv', index=False)
-
-print("Success")
+if __name__ == '__main__':
+    # Load the dataset
+    df = pd.read_csv('./dataset_mood_smartphone.csv')
+    df_cleaned = clean_dataset(df, 'interpolation', 'time')
+    # Save the cleaned dataset to a new CSV file
+    df_cleaned.to_csv('cleaned_dataset.csv', index=False)
+    print("Success")
