@@ -21,7 +21,7 @@ def create_features(df, window_size=3):
     :return:
     """
 
-    df['time'] = pd.to_datetime(df['time'], format='mixed')
+    df['time'] = pd.to_datetime(df['time'])
     score_vars = ['mood', 'circumplex.arousal', 'circumplex.valence', 'activity']
     binary_vars = ['call', 'sms']
     apps = [x for x in list(df['variable'].drop_duplicates()) if x not in score_vars and x not in binary_vars]
@@ -74,7 +74,7 @@ def create_features(df, window_size=3):
 
     return pd.DataFrame(X), pd.DataFrame(Y, columns=['mood'])
 
-def select_features(X, y, k=5, cc=0.001):
+def select_features(X, y, seed, k=5, cc=0.001):
     """
     Select relevant features, using Lasso and GridCV for alpha selection.
     Selects features that have |lasso coefficient| > cc
@@ -90,7 +90,7 @@ def select_features(X, y, k=5, cc=0.001):
     alphas = {'alpha': [0.0001, 0.001, 0.01, 0.1, 1, 10, 100]}
 
     # Initializing KFold (k=10), Lasso, and GridSearchCV
-    kf = KFold(n_splits=10, shuffle=True, random_state=SEED)
+    kf = KFold(n_splits=10, shuffle=True, random_state=seed)
     lasso = Lasso()
     lasso_cv = GridSearchCV(lasso, param_grid=alphas, cv=kf)
     lasso_cv.fit(X, y)
@@ -117,14 +117,14 @@ def select_features(X, y, k=5, cc=0.001):
 if __name__ == '__main__':
     SEED = np.random.randint(100)
     np.random.seed(SEED), random.seed(SEED)
-    pd.set_option('future.no_silent_downcasting', True)
+    #pd.set_option('future.no_silent_downcasting', True)
     dataset = pd.read_csv('./cleaned_dataset.csv')
     # Creating features
     X, y = create_features(dataset)
     # Splitting in train and test sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=SEED)
     # Selecting optimal features
-    features = select_features(X_train, y_train)
+    features = select_features(X_train, y_train, SEED)
     print(f"SEED: {SEED}")
     print(features)
     X_train, X_test = X_train[features], X_test[features]
