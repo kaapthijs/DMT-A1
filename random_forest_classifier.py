@@ -11,6 +11,12 @@ import seaborn as sns
 import plotly.figure_factory as ff
 import random
 
+import numpy as np
+from sklearn.metrics import confusion_matrix
+from statsmodels.stats.contingency_tables import mcnemar
+
+
+
 def evaluate(y_test, y_pred, model,title):
     
     class_labels = ['Low mood', 'High mood']
@@ -97,8 +103,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random
 features = select_features(X_train, y_train, SEED)
 print(features)
 X_train, X_test = X_train[features], X_test[features]
-
-
+X_train['mood_target'] = y_train
+X_test['mood_target'] = y_test
 
 
 #KBinsDiscritizer to convert labels to classes
@@ -159,12 +165,22 @@ print(class_report_tuned)
 
 
 
+cm1 = [[168,15],[47,20]]
+cm2 = [[140,  11],[ 41 , 57]]
+# Create confusion matrices for each model against the true labels
 
+# Extracting counts for McNemar's test
+b = cm1[0][1] + cm1[1][0]  # False positives + false negatives for Model 1
+c = cm2[0][1] + cm2[1][0]  # False positives + false negatives for Model 2
 
+# Build the contingency table
+table = np.array([[0, b], 
+                  [c, 0]])
 
+# Apply McNemar's test
+result = mcnemar(table, exact=False, correction=True)  # correction=True applies continuity correction
 
-
-
+print('statistic=%.3f' % (result.statistic))
 
 
 

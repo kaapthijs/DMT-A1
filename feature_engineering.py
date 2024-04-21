@@ -21,7 +21,8 @@ def create_features(df, window_size=3):
     :return:
     """
 
-    df['time'] = pd.to_datetime(df['time'],format = 'mixed')
+    #df['time'] = pd.to_datetime(df['time'],format = 'mixed')
+    df['time'] = pd.to_datetime(df['time'])
     score_vars = ['mood', 'circumplex.arousal', 'circumplex.valence', 'activity']
     binary_vars = ['call', 'sms']
     apps = [x for x in list(df['variable'].drop_duplicates()) if x not in score_vars and x not in binary_vars]
